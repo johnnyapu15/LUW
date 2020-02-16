@@ -9,9 +9,6 @@
 <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
 <script>
     //importScripts("//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js");
-    function t() {
-        alert("2222d");
-    }
     var socket;
     socket = io.connect('http://' + document.domain + ':' + location.port);
     socket.emit('idxTest', i);
@@ -23,28 +20,36 @@
     var mediaRecorder;
     var audio;
     var chunkSize = 1000;
-    function test(stream){
-        socket.emit('idxTest', i);
-
+    var timeslice = 1000; // 1000ms
+    var endTime = 5000;
+    var BPS = 128000;
+    var endFlag = false;
+    function initRecorder(stream) {
         var options = {
-            audioBitsPerSecond : 128000,
+            audioBitsPerSecond : BPS,
             mimeType: 'audio/webm'
         };
         mediaRecorder = new MediaRecorder(stream, options);
         mediaRecorder.onstart = function(e) {
             audioData = [];
+            console.log("Start");
+            
         };
         
         mediaRecorder.ondataavailable = function(e) {
             audioData.push(e.data);
-            console.log("PUSH");
-            var sli = audioData.slice(0,i);
-            console.log(sli);
+            
+            console.log("PUSH");           
+            
+            i+=1;
+        };
+        mediaRecorder.onstop = function(e) {
+            console.log("End");
+            
             socket.emit('idxTest', i);
             var pre = new Blob(
-                [e.data], {
-                    'type':'audio/wav; codecs=0'       });
-            console.log(pre);
+                audioData, {
+                    'type':'audio/webm; codecs=opus'       });
             var data = {
                 'idx':i,
                 'data': pre,
@@ -52,51 +57,48 @@
             };
             socket.emit('periodic', data 
             );
-            
-            i+=1;
         };
-            
-    
+    }
+    function test(stream){
+        i = 0;
+        socket.emit('idxTest', i);
         console.log("test" + i);
         
-        mediaRecorder.start(1000);
+        mediaRecorder.start();
         
-        setTimeout(function() {
-            mediaRecorder.stop()
-        }, 10000);
+
     };
     //setTimeout(function(){test()}, 2000);
     
     function Upload() {
-    test(audio.srcObject);
-    alert("22")
-    periodic = setInterval(function() {
-        console.log(i);
+        initRecorder(audio.srcObject);
+        periodic = setInterval(function() {
+            if (endFlag) {
+                console.log("ENDENDENDEND");
+                
+                mediaRecorder.stop();
+                clearInterval(periodic);
+            }
+            if (mediaRecorder.state == "inactive"){
+                mediaRecorder.start();
+            }
+            else {
+                mediaRecorder.stop();
+                mediaRecorder.start();
+            }
+        }, timeslice);
         
-        console.log(audioData);
-        /*var pre = new Blob(
-            audioData, {
-                'type':'audio/wav; codecs=opus'       });
-        console.log(pre);
+        logging = setInterval(function() {
+            console.log(audio.srcObject);
+        }, 1000);
+        setTimeout(function() {
+            //clearInterval(periodic);
+            clearInterval(logging);
+            endFlag = true;
+        }, endTime);
+        //document.addEventListener('DOMContentLoaded', function() {
         
-        //socket.emit('periodic', pre 
-        //);
-        socket.emit('idxTest', i);
-        i = audioData.length;
-        */
-    }, 1000);
-    
-    logging = setInterval(function() {
-        console.log(audio.srcObject);
-    }, 1000);
-    setTimeout(function() {
-        clearInterval(periodic);
-        clearInterval(logging);
-
-    }, 5000);
-    //document.addEventListener('DOMContentLoaded', function() {
-    
-    //})
+        //})
     };
     navigator.getUserMedia({audio:true}, function (localMediaStream) {
         audio = document.querySelector('audio');

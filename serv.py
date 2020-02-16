@@ -5,6 +5,8 @@ import flask_socketio as si
 import wave
 import base64
 import numpy
+import soundfile as sf
+import io
 # audio => freqCode => area => evacuation route
 # TODO: Create the area-frequency code list (json)
 # TODO: Implement the area-freqCode match module
@@ -20,25 +22,33 @@ td = bytes()
 @app.route('/')
 def home():
     return render_template('audioTest.html')
+    #return '1'
 
 # SOCKETIO FUNCTIONS
 
 @socketio.on('idxTest')
 def idxTest(idx):
-    print(idx)
+    print("#IDX_TEST:" + str(idx))
 
 @socketio.on('periodic')
 def periodicLoad(blob):
     global td
     #w = wave.Wave_read(blob)
-    
+    print("PRINTING_PERIODIC")
     #print(w.getframerate())
-    print(blob)
+    print(blob.keys())
     td += blob['data']
-    if blob['idx'] == 9:
-        f = open('./file' + str(blob['idx']) + '.wav', 'wb')
-        f.write(td)
-        f.close()
+    # data, samplerate = sf.read(io.BytesIO(blob['data']))
+    # print(data)
+    # print(samplerate)
+    # data, samplerate = sf.read(blob['data'])
+    
+    #print(data)
+    #print(samplerate)
+    f = open('./sounds/file' + str(blob['idx']) +'.wav', 'wb')
+    f.write(blob['data'])
+    f.close()
+    #print(blob['data'])
 #########
 
 if __name__ == "__main__":
